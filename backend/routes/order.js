@@ -8,6 +8,7 @@ import {
   cancelOrder,
   getOrderByTrackingNumber,
   deleteOrder,
+  getVendorOrders,
 } from '../controllers/orderController.js';
 import { authenticate, authorizeRoles } from '../middleware/auth.js';
 
@@ -26,6 +27,9 @@ router
   .get(authorizeRoles('admin'), getAllOrders);
 
 router.route('/users/:userId/orders').get(getUserOrders);
+
+// Vendor orders route
+router.get('/orders/vendor/:vendorId', getVendorOrders);
 
 router
   .route('/orders/:id')

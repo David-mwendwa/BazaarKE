@@ -25,8 +25,8 @@ export const newOrder = async (req, res) => {
     if (!validPaymentMethods.includes(paymentMethod)) {
       throw new BadRequestError(
         `Invalid payment method. Must be one of: ${validPaymentMethods.join(
-          ', '
-        )}`
+          ', ',
+        )}`,
       );
     }
 
@@ -79,7 +79,7 @@ export const newOrder = async (req, res) => {
           req.body.items?.reduce(
             (sum, item) =>
               sum + (item.price?.amount || 0) * (item.quantity || 1),
-            0
+            0,
           ) || 0,
         currency: 'KES',
       },
@@ -88,7 +88,7 @@ export const newOrder = async (req, res) => {
           req.body.items?.reduce(
             (sum, item) =>
               sum + (item.price?.amount || 0) * (item.quantity || 1),
-            0
+            0,
           ) || 0,
         currency: 'KES',
       },
@@ -108,7 +108,7 @@ export const newOrder = async (req, res) => {
                   (req.body.subtotal ||
                     req.body.payment?.amount?.subtotal ||
                     1)) *
-                  10000
+                  10000,
               ) / 100
             : 0),
       },
@@ -117,7 +117,7 @@ export const newOrder = async (req, res) => {
     // Log the order data for debugging
     console.log(
       'Creating order with data:',
-      JSON.stringify(orderData, null, 2)
+      JSON.stringify(orderData, null, 2),
     );
 
     // Create and save the order
@@ -159,7 +159,7 @@ export const newOrder = async (req, res) => {
 export const getSingleOrder = async (req, res) => {
   const order = await Order.findById(req.params.id).populate(
     'user',
-    'name email'
+    'name email',
   );
 
   if (!order) {
@@ -172,6 +172,37 @@ export const getSingleOrder = async (req, res) => {
   }
 
   res.status(StatusCodes.OK).json({ success: true, data: order });
+};
+
+// Get orders for a vendor => GET /api/v1/orders/vendor/:vendorId
+export const getVendorOrders = async (req, res) => {
+  try {
+    const vendorId = req.params.vendorId;
+
+    if (!vendorId) {
+      throw new BadRequestError('Vendor ID is required');
+    }
+
+    // Find all orders where at least one item belongs to this vendor
+    const orders = await Order.find({
+      'items.vendor': vendorId,
+    })
+      .populate('user', 'name email')
+      .populate('items.product', 'name price')
+      .sort('-createdAt');
+
+    res.status(StatusCodes.OK).json({
+      success: true,
+      count: orders.length,
+      data: orders,
+    });
+  } catch (error) {
+    console.error('Error fetching vendor orders:', error);
+    res.status(error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: error.message || 'Error fetching vendor orders',
+    });
+  }
 };
 
 // Get user's orders => GET /api/v1/users/:userId/orders
@@ -286,7 +317,7 @@ export const cancelOrder = async (req, res) => {
   // Check if order can be cancelled
   if (!['pending', 'processing'].includes(order.status)) {
     throw new BadRequestError(
-      `Cannot cancel order with status: ${order.status}`
+      `Cannot cancel order with status: ${order.status}`,
     );
   }
 

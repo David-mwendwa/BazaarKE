@@ -246,6 +246,9 @@ export const orderAPI = {
   // Get user's orders
   getUserOrders: (userId) => api.get(`/users/${userId}/orders`),
 
+  // Get vendor's orders
+  getVendorOrders: (vendorId) => api.get(`/orders/vendor/${vendorId}`),
+
   // Update order status
   updateOrderStatus: (orderId, status) =>
     api.patch(`/orders/${orderId}/status`, { status }),

@@ -34,6 +34,17 @@ const orderService = {
     }
   },
 
+  // Get vendor's orders
+  async getVendorOrders(vendorId) {
+    try {
+      const response = await orderAPI.getVendorOrders(vendorId);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch vendor orders:', error);
+      throw error;
+    }
+  },
+
   // Update order status
   async updateOrderStatus(orderId, status) {
     try {

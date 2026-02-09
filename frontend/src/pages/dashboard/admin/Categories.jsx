@@ -558,34 +558,28 @@ const Categories = () => {
             }}
             onSortingChange={setSorting}
             sorting={sorting}
+            enableRowSelection={true}
             selectedRows={selectedRows}
-            onSelectRow={(row, selected) => {
+            onSelectRow={(rowId, selected) => {
               if (selected) {
-                setSelectedRows((prev) => [...prev, row.id]);
+                setSelectedRows((prev) => [...prev, rowId]);
               } else {
-                setSelectedRows((prev) => prev.filter((id) => id !== row.id));
+                setSelectedRows((prev) => prev.filter((id) => id !== rowId));
               }
             }}
             onSelectAll={(selected) => {
               if (selected) {
-                const pageIds = paginatedCategories.map((row) => row.id);
-                setSelectedRows((prev) => [...new Set([...prev, ...pageIds])]);
+                // Select all filtered categories
+                const allIds = filteredCategories.map((row) => row._id || row.id);
+                setSelectedRows((prev) => [...new Set([...prev, ...allIds])]);
               } else {
-                const pageIds = paginatedCategories.map((row) => row.id);
+                // Deselect all filtered categories
+                const allIds = filteredCategories.map((row) => row._id || row.id);
                 setSelectedRows((prev) =>
-                  prev.filter((id) => !pageIds.includes(id))
+                  prev.filter((id) => !allIds.includes(id)),
                 );
               }
             }}
-            isAllSelected={
-              selectedRows.length > 0 &&
-              paginatedCategories.every((row) => selectedRows.includes(row.id))
-            }
-            isSomeSelected={
-              selectedRows.length > 0 &&
-              paginatedCategories.some((row) => selectedRows.includes(row.id))
-            }
-            enableRowSelection={false}
             emptyState={
               <div className='flex flex-col items-center justify-center py-12'>
                 <Package className='h-12 w-12 text-muted-foreground mb-4' />

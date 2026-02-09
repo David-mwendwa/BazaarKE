@@ -1,5 +1,7 @@
-import React, { useState, useMemo, memo, useEffect } from 'react';
+import React, { useState, useMemo, memo, useEffect, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { OrderContext } from '../../../contexts/OrderContext';
+import { useAuth } from '../../../contexts/AuthContext';
 import {
   Card,
   CardHeader,
@@ -64,6 +66,7 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Wallet,
 } from 'lucide-react';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
@@ -156,12 +159,34 @@ const Icon = ({ name, ...props }) => {
 
 const Orders = () => {
   const navigate = useNavigate();
-  // Using react-toastify directly for notifications
+  const { user } = useAuth();
+  const {
+    orders,
+    loading: ordersLoading,
+    error: ordersError,
+    fetchVendorOrders,
+  } = useContext(OrderContext);
 
-  // State for data and loading
-  const [orders, setOrders] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // State for data and loading - sync with context
+  const [isLoading, setIsLoading] = useState(ordersLoading);
+  const [error, setError] = useState(ordersError);
+
+  // Sync loading and error states with context
+  useEffect(() => {
+    setIsLoading(ordersLoading);
+  }, [ordersLoading]);
+
+  useEffect(() => {
+    setError(ordersError);
+  }, [ordersError]);
+
+  // Fetch vendor orders when component mounts or user changes
+  useEffect(() => {
+    const userId = user?.user?._id || user?._id;
+    if (userId) {
+      fetchVendorOrders(userId);
+    }
+  }, [user, fetchVendorOrders]);
 
   // State for filters and pagination
   const [searchQuery, setSearchQuery] = useState('');
@@ -171,32 +196,13 @@ const Orders = () => {
     dateRange: 'last30',
   });
   const [dateRange, setDateRange] = useState({
-    from: subDays(new Date(), 29), // Last 30 days (inclusive)
-    to: new Date(),
+    from: null, // Start with no date filter to show all orders
+    to: null,
   });
   const [selectedDateRange, setSelectedDateRange] = useState('last30');
   const [selectedRows, setSelectedRows] = useState([]);
-  const [pagination, setPagination] = useState({
-    pageIndex: 0,
-    pageSize: 10,
-  });
 
-  useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        // Set your orders data here
-        // setOrders(mockOrders);
-      } catch (error) {
-        console.error('Error fetching orders:', error);
-        setError('Failed to load orders');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchOrders();
-  }, []);
+  // Orders are fetched via context, no need for separate fetch here
 
   // Check if any filters are active
   const hasActiveFilters =
@@ -218,24 +224,20 @@ const Orders = () => {
       from: subDays(new Date(), 29),
       to: new Date(),
     });
-    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   };
 
   // Handle filter changes
   const handleStatusFilter = (value) => {
     setFilters((prev) => ({ ...prev, status: value }));
-    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   };
 
   const handlePaymentFilter = (value) => {
     setFilters((prev) => ({ ...prev, payment: value }));
-    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   };
 
   // Handle date range change
   const handleDateRangeChange = (range) => {
     setSelectedDateRange(range);
-    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
 
     // Update the actual date range based on the selected range
     if (range === 'today') {
@@ -270,7 +272,7 @@ const Orders = () => {
       const firstDayLastMonth = new Date(
         now.getFullYear(),
         now.getMonth() - 1,
-        1
+        1,
       );
       const lastDayLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
       setDateRange({
@@ -282,7 +284,6 @@ const Orders = () => {
 
   const handleSearch = (e) => {
     setSearchQuery(e.target.value);
-    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   };
 
   // Format date range for display
@@ -305,16 +306,18 @@ const Orders = () => {
     }
 
     const totalOrders = orders.length;
-    const totalRevenue = orders.reduce(
-      (sum, order) => sum + (order.total || 0),
-      0
-    );
+    const totalRevenue = orders.reduce((sum, order) => {
+      const total =
+        order.total?.amount || order.totalAmount || order.total || 0;
+      // Convert from cents to currency units if needed (divide by 100)
+      return sum + (typeof total === 'number' ? total : 0);
+    }, 0);
     const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
     const pendingOrders = orders.filter(
-      (order) => order.status === 'pending'
+      (order) => order.status === 'pending',
     ).length;
     const completedOrders = orders.filter(
-      (order) => order.status === 'completed'
+      (order) => order.status === 'completed',
     ).length;
 
     return {
@@ -336,66 +339,96 @@ const Orders = () => {
 
       // Search filter
       const matchesSearch =
-        !searchQuery ||
-        (order.id &&
-          order.id
-            .toString()
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase())) ||
-        (order.customer &&
-          order.customer.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (order.email &&
-          order.email.toLowerCase().includes(searchQuery.toLowerCase()));
+        searchQuery === '' ||
+        order.orderNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        order.user?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        order.user?.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        order.customer?.name
+          ?.toLowerCase()
+          .includes(searchQuery.toLowerCase()) ||
+        order.customer?.email
+          ?.toLowerCase()
+          .includes(searchQuery.toLowerCase()) ||
+        (typeof order.customer === 'string' &&
+          order.customer.toLowerCase().includes(searchQuery.toLowerCase()));
 
       // Status filter
       const matchesStatus =
-        !filters.status ||
-        filters.status === 'all' ||
-        order.status === filters.status;
+        filters.status === 'all' || order.status === filters.status;
 
-      // Payment filter
+      // Payment filter - handle nested payment object
+      const paymentMethod =
+        order.payment?.method || order.paymentMethod || order.payment;
       const matchesPayment =
-        !filters.payment ||
-        filters.payment === 'all' ||
-        order.payment === filters.payment;
+        filters.payment === 'all' || paymentMethod === filters.payment;
 
-      // Date range filter
-      let matchesDateRange = true;
-      if (order.date) {
-        const orderDate = new Date(order.date);
-        matchesDateRange =
-          (!dateRange.from || orderDate >= dateRange.from) &&
-          (!dateRange.to ||
-            orderDate <= new Date(dateRange.to.setHours(23, 59, 59, 999)));
+      // Date range filter - only filter if date range is set
+      const orderDate = order.createdAt
+        ? new Date(order.createdAt)
+        : order.date
+          ? new Date(order.date)
+          : null;
+      let matchesDateRange = true; // Default to true (show all orders if no date filter)
+
+      if (dateRange.from && dateRange.to && orderDate) {
+        // Reset time to start/end of day for proper comparison
+        const orderDateOnly = new Date(orderDate);
+        orderDateOnly.setHours(0, 0, 0, 0);
+
+        const fromDate = new Date(dateRange.from);
+        fromDate.setHours(0, 0, 0, 0);
+
+        const toDate = new Date(dateRange.to);
+        toDate.setHours(23, 59, 59, 999);
+
+        matchesDateRange = orderDateOnly >= fromDate && orderDateOnly <= toDate;
       }
 
-      return (
-        matchesSearch && matchesStatus && matchesPayment && matchesDateRange
-      );
+      const matches =
+        matchesSearch && matchesStatus && matchesPayment && matchesDateRange;
+
+      // Debug first order to see what's happening
+      if (orders.indexOf(order) === 0) {
+        console.log('First order filter check:', {
+          orderNumber: order.orderNumber,
+          orderDate: orderDate,
+          dateRange,
+          matchesSearch,
+          matchesStatus,
+          matchesPayment,
+          matchesDateRange,
+          matches,
+        });
+      }
+
+      return matches;
     });
-  }, [orders, searchQuery, filters.status, filters.payment, dateRange]);
+  }, [searchQuery, filters, dateRange, orders]);
 
-  // Pagination
-  const paginatedData = useMemo(() => {
-    const startIndex = (pagination.pageIndex - 1) * pagination.pageSize;
-    return filteredOrders.slice(startIndex, startIndex + pagination.pageSize);
-  }, [filteredOrders, pagination]);
-
-  const totalPages = Math.ceil(filteredOrders.length / pagination.pageSize);
+  // Log the orders to see the structure
+  useEffect(() => {
+    console.log('Orders from context:', orders);
+    console.log('Orders count:', orders?.length);
+    console.log('Filtered orders count:', filteredOrders?.length);
+    if (filteredOrders?.length > 0) {
+      console.log('First filtered order:', filteredOrders[0]);
+    }
+  }, [orders, filteredOrders]);
 
   // Handle row selection
   const handleRowSelect = (row, isSelected) => {
+    const rowId = row.original?._id || row.original?.id || row.id;
     if (isSelected) {
-      setSelectedRows([...selectedRows, row.id]);
+      setSelectedRows([...selectedRows, rowId]);
     } else {
-      setSelectedRows(selectedRows.filter((id) => id !== row.id));
+      setSelectedRows(selectedRows.filter((id) => id !== rowId));
     }
   };
 
   // Handle select all
   const handleSelectAll = (isSelected) => {
     if (isSelected) {
-      setSelectedRows(paginatedData.map((row) => row.id));
+      setSelectedRows(filteredOrders.map((row) => row._id || row.id));
     } else {
       setSelectedRows([]);
     }
@@ -432,8 +465,7 @@ const Orders = () => {
           break;
       }
 
-      // Close bulk actions menu
-      setIsBulkActionOpen(false);
+      // Bulk action completed
     } catch (error) {
       console.error('Bulk action error:', error);
       toast.error('An error occurred while processing your request.');
@@ -483,9 +515,6 @@ const Orders = () => {
     return (
       <Badge
         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
-        {status === 'processing' && (
-          <RefreshCw className='h-3 w-3 mr-1.5 animate-spin' />
-        )}
         {status === 'shipped' && <Truck className='h-3 w-3 mr-1.5' />}
         {status === 'completed' && <CheckCircle className='h-3 w-3 mr-1.5' />}
         {status === 'cancelled' && <XCircle className='h-3 w-3 mr-1.5' />}
@@ -531,7 +560,7 @@ const Orders = () => {
         <span
           className={cn(
             'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-            config.color
+            config.color,
           )}>
           {config.label}
         </span>
@@ -539,249 +568,175 @@ const Orders = () => {
     );
   };
 
-  // Define columns for DataTable
+  // Columns configuration for the orders table
+  // Note: DataTable automatically adds a checkbox column when enableRowSelection is true
   const columns = [
     {
-      key: 'id',
+      key: 'orderNumber',
       header: 'Order',
-      cell: (row) => (
-        <div className='flex flex-col'>
-          <Link
-            to={`/dashboard/orders/${row.id}`}
-            className='font-medium text-foreground hover:underline inline-flex items-center'
-            onClick={(e) => e.stopPropagation()}>
-            {row.id}
-            <FileText className='h-3.5 w-3.5 ml-1.5 text-muted-foreground' />
-          </Link>
-          <span className='text-xs text-muted-foreground'>
-            {row.formattedDate}
-          </span>
-        </div>
-      ),
-      sortable: true,
-      width: 180,
-    },
-    {
-      key: 'customer',
-      header: 'Customer',
-      cell: (row) => (
-        <div className='flex items-center'>
-          <div className='h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium mr-2'>
-            {row.customer.charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <div className='font-medium text-foreground'>{row.customer}</div>
-            <div className='text-xs text-muted-foreground'>{row.email}</div>
-          </div>
-        </div>
-      ),
-      sortable: true,
-      width: 220,
-    },
-    {
-      key: 'products',
-      header: 'Products',
-      cell: (row) => (
-        <div className='flex -space-x-2'>
-          {row.products?.slice(0, 3).map((product, idx) => (
-            <div key={idx} className='relative'>
-              <div className='h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground border-2 border-background'>
-                {product.name.charAt(0).toUpperCase()}
-                {product.quantity > 1 && (
-                  <span className='absolute -top-1 -right-1 bg-primary text-white text-[10px] h-4 w-4 rounded-full flex items-center justify-center'>
-                    {product.quantity}
-                  </span>
-                )}
-              </div>
-            </div>
-          ))}
-          {row.products?.length > 3 && (
-            <div className='h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground border-2 border-background'>
-              +{row.products.length - 3}
-            </div>
-          )}
-        </div>
-      ),
-      width: 140,
-    },
-    {
-      key: 'total',
-      header: 'Total',
-      cell: (row) => (
-        <div>
-          <div className='font-medium text-foreground'>
-            {row.formattedTotal}
-          </div>
-          <div className='text-xs text-muted-foreground'>{row.itemsText}</div>
-        </div>
-      ),
-      sortable: true,
-      width: 100,
-    },
-    {
-      key: 'payment',
-      header: 'Payment',
+      accessorKey: 'orderNumber',
+      sortValue: (row) => row.orderNumber || row._id || '',
       cell: (row) => {
-        const badge = getPaymentBadge(row.payment);
-        return React.isValidElement(badge) ? (
-          badge
-        ) : (
-          <span>{JSON.stringify(badge)}</span>
+        const order = row;
+        const customer = order.user || order.customer;
+        const customerName =
+          customer?.name ||
+          customer?.email ||
+          (typeof customer === 'string' ? customer : 'N/A');
+        return (
+          <div className='font-medium'>
+            <div>{order.orderNumber || order._id || 'N/A'}</div>
+            <div className='text-xs text-gray-500'>{customerName}</div>
+          </div>
         );
       },
-      sortable: true,
-      width: 150,
+    },
+    {
+      key: 'date',
+      header: 'Date',
+      accessorKey: 'createdAt',
+      sortValue: (row) => {
+        const date = row.createdAt || row.date;
+        return date ? new Date(date).getTime() : 0;
+      },
+      cell: (row) => {
+        const date = row.createdAt || row.date;
+        return date ? formatDate(date, 'MMM D, YYYY') : 'N/A';
+      },
     },
     {
       key: 'status',
       header: 'Status',
+      accessorKey: 'status',
+      sortValue: (row) => row.status || '',
+      cell: (row) => getStatusBadge(row.status),
+    },
+    {
+      key: 'total',
+      header: 'Total',
+      accessorKey: 'total.amount',
+      sortValue: (row) => {
+        const totalAmount =
+          row.total?.amount || row.totalAmount || row.total || 0;
+        // Convert from cents if needed
+        return totalAmount > 1000 && totalAmount % 100 === 0
+          ? totalAmount / 100
+          : totalAmount;
+      },
       cell: (row) => {
-        const badge = getStatusBadge(row.status);
-        return React.isValidElement(badge) ? (
-          badge
-        ) : (
-          <span>{JSON.stringify(badge)}</span>
+        const order = row;
+        // Handle nested total object or direct value
+        const totalAmount =
+          order.total?.amount || order.totalAmount || order.total || 0;
+        // If amount is in cents (like 17023), convert to currency units
+        // Check if it's likely in cents (amount > 1000 and no decimal)
+        const displayAmount =
+          totalAmount > 1000 && totalAmount % 100 === 0
+            ? totalAmount / 100
+            : totalAmount;
+        return formatCurrency(displayAmount);
+      },
+    },
+    {
+      key: 'items',
+      header: 'Items',
+      accessorKey: 'items',
+      sortValue: (row) => row.items?.length || 0,
+      cell: (row) => {
+        const order = row;
+        const itemsCount = order.items?.length || 0;
+        return (
+          <div className='flex items-center gap-2'>
+            <Package className='h-4 w-4 text-muted-foreground' />
+            <span className='font-medium'>{itemsCount}</span>
+            <span className='text-sm text-muted-foreground'>
+              {itemsCount === 1 ? 'item' : 'items'}
+            </span>
+          </div>
         );
       },
-      sortable: true,
-      width: 130,
+    },
+    {
+      key: 'payment',
+      header: 'Payment',
+      accessorKey: 'payment.method',
+      sortValue: (row) => {
+        return (
+          row.payment?.method ||
+          row.paymentMethod ||
+          row.payment ||
+          'unknown'
+        );
+      },
+      cell: (row) => {
+        const order = row;
+        // Handle nested payment object
+        const paymentMethod =
+          order.payment?.method ||
+          order.paymentMethod ||
+          order.payment ||
+          'unknown';
+        return <span>{getPaymentMethodLabel(paymentMethod)}</span>;
+      },
     },
     {
       key: 'actions',
-      header: '',
-      cell: (row) => (
-        <OrderActions
-          orderId={row.id}
-          status={row.status}
-          onStatusChange={(newStatus) => {
-            // Update the status in the local state
-            const updatedData = orders.map((order) =>
-              order.id === row.id ? { ...order, status: newStatus } : order
-            );
-            setOrders(updatedData);
-            // In a real app, you would also update the data source here
-            console.log(`Order ${row.id} status updated to ${newStatus}`);
-          }}
-        />
-      ),
-      width: 60,
+      header: 'Actions',
+      sortable: false,
+      className: 'sticky right-0',
+      cell: (row) => {
+        const order = row;
+        return (
+          <div className='flex justify-end'>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant='ghost'
+                  size='icon'
+                  className='h-8 w-8 p-0 text-muted-foreground hover:text-foreground'
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}>
+                  <MoreHorizontal className='h-4 w-4' />
+                  <span className='sr-only'>Open menu</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align='end' className='w-40'>
+                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/dashboard/vendor/orders/${order._id || order.id}`);
+                  }}
+                  className='cursor-pointer'>
+                  <Eye className='mr-2 h-4 w-4' />
+                  View Details
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className='cursor-pointer'
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}>
+                  <FileText className='mr-2 h-4 w-4' />
+                  View Invoice
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className='cursor-pointer text-destructive focus:text-destructive'
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}>
+                  <Trash2 className='mr-2 h-4 w-4' />
+                  Cancel Order
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      },
+      width: 80,
     },
   ];
-
-  // Order Actions Component
-  const OrderActions = memo(({ orderId, status: initialStatus }) => {
-    const [status, setStatus] = useState(initialStatus);
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-
-    const handleStatusChange = (newStatus) => {
-      setStatus(newStatus);
-      // Update order status in the backend
-      // updateOrderStatus(orderId, newStatus);
-      toast.success(`Order status updated to ${newStatus}`);
-    };
-
-    return (
-      <div className='flex items-center justify-end space-x-1'>
-        {/* View Details */}
-        <Link
-          to={`/dashboard/orders/${orderId}`}
-          className='p-1.5 rounded-md hover:bg-accent/50 text-muted-foreground hover:text-foreground transition-colors'
-          title='View details'
-          onClick={(e) => e.stopPropagation()}>
-          <Icon name='EYE' className='h-4 w-4' />
-          <span className='sr-only'>View details</span>
-        </Link>
-
-        {/* Status Dropdown */}
-        <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
-          <DropdownMenuTrigger asChild>
-            <button
-              className='p-1.5 rounded-md hover:bg-accent/50 text-muted-foreground hover:text-foreground transition-colors'
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsDropdownOpen(!isDropdownOpen);
-              }}
-              title='Change status'>
-              <Icon name='CHECK_CIRCLE' className='h-4 w-4' />
-              <span className='sr-only'>Change status</span>
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align='end' className='w-48'>
-            <DropdownMenuItem onClick={() => handleStatusChange('pending')}>
-              <span className='w-2 h-2 rounded-full bg-yellow-500 mr-2' />
-              Pending
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleStatusChange('processing')}>
-              <span className='w-2 h-2 rounded-full bg-blue-500 mr-2' />
-              Processing
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleStatusChange('shipped')}>
-              <span className='w-2 h-2 rounded-full bg-purple-500 mr-2' />
-              Shipped
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleStatusChange('delivered')}>
-              <span className='w-2 h-2 rounded-full bg-green-500 mr-2' />
-              Delivered
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => handleStatusChange('cancelled')}
-              className='text-destructive focus:text-destructive'>
-              <span className='w-2 h-2 rounded-full bg-red-500 mr-2' />
-              Cancel Order
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {/* More Actions Dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              className='p-1.5 rounded-md hover:bg-accent/50 text-muted-foreground hover:text-foreground transition-colors'
-              onClick={(e) => e.stopPropagation()}
-              title='More actions'>
-              <Icon name='MORE_VERTICAL' className='h-4 w-4' />
-              <span className='sr-only'>More actions</span>
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align='end' className='w-48'>
-            <DropdownMenuItem asChild>
-              <Link
-                to={`/dashboard/orders/${orderId}/invoice`}
-                className='w-full'>
-                <Icon name='PRINTER' className='mr-2 h-4 w-4' />
-                Print Invoice
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Icon name='DOWNLOAD' className='mr-2 h-4 w-4' />
-              Download PDF
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Icon name='MAIL' className='mr-2 h-4 w-4' />
-              Resend Confirmation
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <Icon name='REFRESH_CW' className='mr-2 h-4 w-4' />
-              Process Refund
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Icon name='MESSAGE_SQUARE' className='mr-2 h-4 w-4' />
-              Contact Customer
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className='text-destructive focus:text-destructive'>
-              <Icon name='TRASH' className='mr-2 h-4 w-4' />
-              Delete Order
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    );
-  });
-
-  OrderActions.displayName = 'OrderActions';
 
   if (isLoading) {
     return (
@@ -900,47 +855,30 @@ const Orders = () => {
         <CardContent className='p-0'>
           <DataTable
             columns={columns}
-            data={paginatedData}
+            data={filteredOrders}
             isLoading={isLoading}
-            pageCount={totalPages}
-            pageIndex={pagination.pageIndex}
-            onPageChange={(pageIndex) =>
-              setPagination((prev) => ({ ...prev, pageIndex }))
-            }
-            pageSize={pagination.pageSize}
-            onPageSizeChange={(pageSize) =>
-              setPagination((prev) => ({ ...prev, pageSize, pageIndex: 0 }))
-            }
-            totalItems={filteredOrders.length}
-            enableRowSelection={false}
+            enableRowSelection={true}
             selectedRows={selectedRows}
-            onSelectRow={(row, selected) => {
+            onSelectRow={(rowId, selected) => {
               if (selected) {
-                setSelectedRows((prev) => [...prev, row.id]);
+                setSelectedRows((prev) => [...prev, rowId]);
               } else {
-                setSelectedRows((prev) => prev.filter((id) => id !== row.id));
+                setSelectedRows((prev) => prev.filter((id) => id !== rowId));
               }
             }}
             onSelectAll={(selected) => {
               if (selected) {
-                const pageIds = paginatedData.map((row) => row.id);
-                setSelectedRows((prev) => [...new Set([...prev, ...pageIds])]);
+                // Select all filtered orders
+                const allIds = filteredOrders.map((row) => row._id || row.id);
+                setSelectedRows((prev) => [...new Set([...prev, ...allIds])]);
               } else {
-                const pageIds = paginatedData.map((row) => row.id);
+                // Deselect all filtered orders
+                const allIds = filteredOrders.map((row) => row._id || row.id);
                 setSelectedRows((prev) =>
-                  prev.filter((id) => !pageIds.includes(id))
+                  prev.filter((id) => !allIds.includes(id)),
                 );
               }
             }}
-            isAllSelected={
-              selectedRows.length > 0 &&
-              paginatedData.every((row) => selectedRows.includes(row.id))
-            }
-            isSomeSelected={
-              selectedRows.length > 0 &&
-              paginatedData.some((row) => selectedRows.includes(row.id))
-            }
-            enableRowSelection={true}
             emptyState={
               <div className='flex flex-col items-center justify-center py-12'>
                 <Package className='h-12 w-12 text-muted-foreground mb-4' />

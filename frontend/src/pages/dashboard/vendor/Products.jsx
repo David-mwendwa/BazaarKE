@@ -164,7 +164,7 @@ const ProductsPage = () => {
 
     if (
       window.confirm(
-        `Are you sure you want to delete ${selectedRows.length} selected products?`
+        `Are you sure you want to delete ${selectedRows.length} selected products?`,
       )
     ) {
       try {
@@ -196,7 +196,7 @@ const ProductsPage = () => {
       low_stock: 'Low Stock',
       archived: 'Archived',
     }),
-    []
+    [],
   );
 
   // Category options for filter
@@ -208,10 +208,10 @@ const ProductsPage = () => {
           ...acc,
           [category]: category,
         }),
-        {}
+        {},
       ),
     }),
-    [categories]
+    [categories],
   );
 
   // Stock status options
@@ -222,7 +222,7 @@ const ProductsPage = () => {
       low_stock: 'Low Stock',
       out_of_stock: 'Out of Stock',
     }),
-    []
+    [],
   );
 
   // Price range options
@@ -233,7 +233,7 @@ const ProductsPage = () => {
       '25_to_50': '$25 - $50',
       over_50: 'Over $50',
     }),
-    []
+    [],
   );
 
   // Filter and sort products
@@ -247,7 +247,7 @@ const ProductsPage = () => {
         (product) =>
           product.name.toLowerCase().includes(query) ||
           product.sku?.toLowerCase().includes(query) ||
-          product.description?.toLowerCase().includes(query)
+          product.description?.toLowerCase().includes(query),
       );
     }
 
@@ -259,7 +259,7 @@ const ProductsPage = () => {
     // Apply category filter
     if (filters.category !== 'all') {
       result = result.filter(
-        (product) => product.category === filters.category
+        (product) => product.category === filters.category,
       );
     }
 
@@ -272,7 +272,7 @@ const ProductsPage = () => {
       result = result.filter(
         (product) =>
           product.stock > 0 &&
-          product.stock <= (product.lowStockThreshold || 10)
+          product.stock <= (product.lowStockThreshold || 10),
       );
     }
 
@@ -281,7 +281,7 @@ const ProductsPage = () => {
       result = result.filter((product) => product.price < 25);
     } else if (filters.priceRange === '25_to_50') {
       result = result.filter(
-        (product) => product.price >= 25 && product.price <= 50
+        (product) => product.price >= 25 && product.price <= 50,
       );
     } else if (filters.priceRange === 'over_50') {
       result = result.filter((product) => product.price > 50);
@@ -460,7 +460,7 @@ const ProductsPage = () => {
                 status === 'low_stock' &&
                   'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
                 status === 'archived' &&
-                  'bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600'
+                  'bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600',
               )}>
               <Icon className='h-3.5 w-3.5' />
               {config.label}
@@ -629,7 +629,7 @@ const ProductsPage = () => {
                   onClick={(e) => {
                     e.stopPropagation();
                     navigate(
-                      `/dashboard/seller/products/${product._id}?view=true`
+                      `/dashboard/seller/products/${product._id}?view=true`,
                     );
                   }}>
                   <Eye className='mr-2 h-4 w-4' />
@@ -642,11 +642,11 @@ const ProductsPage = () => {
                     e.stopPropagation();
                     if (
                       window.confirm(
-                        'Are you sure you want to delete this product?'
+                        'Are you sure you want to delete this product?',
                       )
                     ) {
                       setProducts((prev) =>
-                        prev.filter((p) => p._id !== product._id)
+                        prev.filter((p) => p._id !== product._id),
                       );
                       toast.success('Product deleted');
                     }
@@ -671,11 +671,11 @@ const ProductsPage = () => {
       case 'delete':
         if (
           window.confirm(
-            `Are you sure you want to delete ${selectedRows.length} selected products?`
+            `Are you sure you want to delete ${selectedRows.length} selected products?`,
           )
         ) {
           setProducts((prev) =>
-            prev.filter((p) => !selectedRows.includes(p._id))
+            prev.filter((p) => !selectedRows.includes(p._id)),
           );
           setSelectedRows([]);
           toast.success(`${selectedRows.length} products deleted`);
@@ -684,8 +684,8 @@ const ProductsPage = () => {
       case 'publish':
         setProducts((prev) =>
           prev.map((p) =>
-            selectedRows.includes(p._id) ? { ...p, status: 'published' } : p
-          )
+            selectedRows.includes(p._id) ? { ...p, status: 'published' } : p,
+          ),
         );
         setSelectedRows([]);
         toast.success(`${selectedRows.length} products published`);
@@ -693,8 +693,8 @@ const ProductsPage = () => {
       case 'draft':
         setProducts((prev) =>
           prev.map((p) =>
-            selectedRows.includes(p._id) ? { ...p, status: 'draft' } : p
-          )
+            selectedRows.includes(p._id) ? { ...p, status: 'draft' } : p,
+          ),
         );
         setSelectedRows([]);
         toast.success(`${selectedRows.length} products moved to draft`);
@@ -799,39 +799,28 @@ const ProductsPage = () => {
               onPageSizeChange: setPageSize,
               pageSizeOptions: [10, 20, 50, 100],
             }}
-            enableRowSelection={false}
+            enableRowSelection={true}
             selectedRows={selectedRows}
-            onSelectRow={(row, selected) => {
+            onSelectRow={(rowId, selected) => {
               if (selected) {
-                setSelectedRows((prev) => [...prev, row._id]);
+                setSelectedRows((prev) => [...prev, rowId]);
               } else {
-                setSelectedRows((prev) => prev.filter((id) => id !== row._id));
+                setSelectedRows((prev) => prev.filter((id) => id !== rowId));
               }
             }}
             onSelectAll={(selected) => {
               if (selected) {
-                const pageIds = filteredProducts
-                  .slice((currentPage - 1) * pageSize, currentPage * pageSize)
-                  .map((row) => row._id);
-                setSelectedRows((prev) => [...new Set([...prev, ...pageIds])]);
+                // Select all filtered products
+                const allIds = filteredProducts.map((row) => row._id || row.id);
+                setSelectedRows((prev) => [...new Set([...prev, ...allIds])]);
               } else {
-                const pageIds = filteredProducts
-                  .slice((currentPage - 1) * pageSize, currentPage * pageSize)
-                  .map((row) => row._id);
+                // Deselect all filtered products
+                const allIds = filteredProducts.map((row) => row._id || row.id);
                 setSelectedRows((prev) =>
-                  prev.filter((id) => !pageIds.includes(id))
+                  prev.filter((id) => !allIds.includes(id)),
                 );
               }
             }}
-            isAllSelected={
-              selectedRows.length > 0 &&
-              selectedRows.length ===
-                Math.min(
-                  pageSize,
-                  filteredProducts.length - (currentPage - 1) * pageSize
-                )
-            }
-            enableRowSelection={false}
             emptyState={
               <div className='flex flex-col items-center justify-center py-12'>
                 <Package className='h-12 w-12 text-muted-foreground mb-4' />

@@ -51,11 +51,29 @@ const DataTable = ({
   const sortedData = useMemo(() => {
     if (!sortConfig.key || !data) return data || [];
 
-    return [...(data || [])].sort((a, b) => {
-      let aValue = a[sortConfig.key];
-      let bValue = b[sortConfig.key];
+    // Find the column configuration for the sort key
+    const column = columns.find((col) => col.key === sortConfig.key);
 
-      if (aValue === undefined || bValue === undefined) return 0;
+    return [...(data || [])].sort((a, b) => {
+      let aValue, bValue;
+
+      // Use custom sortValue function if provided
+      if (column?.sortValue) {
+        aValue = column.sortValue(a);
+        bValue = column.sortValue(b);
+      } else if (column?.accessorKey) {
+        // Use accessorKey if available (supports nested paths like 'total.amount')
+        const accessor = column.accessorKey.split('.');
+        aValue = accessor.reduce((obj, key) => obj?.[key], a);
+        bValue = accessor.reduce((obj, key) => obj?.[key], b);
+      } else {
+        // Fallback to direct key access
+        aValue = a[sortConfig.key];
+        bValue = b[sortConfig.key];
+      }
+
+      if (aValue === undefined || aValue === null) return 1;
+      if (bValue === undefined || bValue === null) return -1;
 
       // Handle different data types for sorting
       if (typeof aValue === 'string') aValue = aValue.toLowerCase();
@@ -65,7 +83,7 @@ const DataTable = ({
       if (aValue > bValue) return sortConfig.direction === 'ascending' ? 1 : -1;
       return 0;
     });
-  }, [data, sortConfig]);
+  }, [data, sortConfig, columns]);
 
   // Remove duplicate sortedData declaration if it exists elsewhere in the file
 
@@ -138,7 +156,7 @@ const DataTable = ({
         });
       }
     },
-    [onSelectAll, paginatedData]
+    [onSelectAll, paginatedData],
   );
 
   // Toggle single row selection
@@ -148,11 +166,11 @@ const DataTable = ({
         onSelectRow(rowId, checked);
       } else {
         setInternalSelectedRows((prev) =>
-          checked ? [...prev, rowId] : prev.filter((id) => id !== rowId)
+          checked ? [...prev, rowId] : prev.filter((id) => id !== rowId),
         );
       }
     },
-    [onSelectRow]
+    [onSelectRow],
   );
 
   const requestSort = (key) => {
@@ -163,7 +181,9 @@ const DataTable = ({
     setSortConfig({ key, direction });
   };
 
-  const showSelectColumn = onSelectAll || onSelectRow;
+  // Only show the legacy checkbox column if enableRowSelection is false
+  // When enableRowSelection is true, the checkbox is added via safeColumns
+  const showSelectColumn = !enableRowSelection && (onSelectAll || onSelectRow);
 
   // Make sure columns is an array
   const safeColumns = useMemo(() => {
@@ -184,7 +204,7 @@ const DataTable = ({
                   ? 'border-primary bg-primary'
                   : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800',
                 'cursor-pointer hover:border-primary dark:hover:border-primary',
-                'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:focus:ring-offset-gray-900'
+                'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:focus:ring-offset-gray-900',
               )}
               onClick={(e) => {
                 e.stopPropagation();
@@ -228,7 +248,7 @@ const DataTable = ({
                     ? 'border-primary bg-primary'
                     : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800',
                   'cursor-pointer hover:border-primary dark:hover:border-primary',
-                  'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:focus:ring-offset-gray-900'
+                  'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:focus:ring-offset-gray-900',
                 )}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -398,7 +418,7 @@ const DataTable = ({
                             column.cellClassName?.includes('text-center'),
                           'text-right':
                             column.cellClassName?.includes('text-right'),
-                        }
+                        },
                       )}
                       style={column.style}>
                       {sortable ? (
@@ -451,10 +471,11 @@ const DataTable = ({
                   className={cn(
                     onRowClick &&
                       'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50',
-                    'bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 last:border-0'
+                    'bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 last:border-0',
                   )}
                   onClick={() => onRowClick?.(row)}>
-                  {onSelectRow && (
+                  {/* Only show legacy checkbox cell if enableRowSelection is false */}
+                  {!enableRowSelection && onSelectRow && (
                     <TableCell>
                       <input
                         type='checkbox'
@@ -505,7 +526,7 @@ const DataTable = ({
                 <TableCell
                   colSpan={Math.max(
                     1,
-                    safeColumns.length + (showSelectColumn ? 1 : 0)
+                    safeColumns.length + (showSelectColumn ? 1 : 0),
                   )}
                   className='h-24 text-center text-muted-foreground bg-white dark:bg-gray-800'>
                   {emptyState}

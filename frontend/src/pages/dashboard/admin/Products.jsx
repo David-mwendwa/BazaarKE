@@ -766,39 +766,28 @@ const ProductsPage = () => {
               onPageSizeChange: setPageSize,
               pageSizeOptions: [10, 20, 50, 100],
             }}
-            enableRowSelection={false}
+            enableRowSelection={true}
             selectedRows={selectedRows}
-            onSelectRow={(row, selected) => {
+            onSelectRow={(rowId, selected) => {
               if (selected) {
-                setSelectedRows((prev) => [...prev, row._id]);
+                setSelectedRows((prev) => [...prev, rowId]);
               } else {
-                setSelectedRows((prev) => prev.filter((id) => id !== row._id));
+                setSelectedRows((prev) => prev.filter((id) => id !== rowId));
               }
             }}
             onSelectAll={(selected) => {
               if (selected) {
-                const pageIds = filteredProducts
-                  .slice((currentPage - 1) * pageSize, currentPage * pageSize)
-                  .map((row) => row._id);
-                setSelectedRows((prev) => [...new Set([...prev, ...pageIds])]);
+                // Select all filtered products
+                const allIds = filteredProducts.map((row) => row._id || row.id);
+                setSelectedRows((prev) => [...new Set([...prev, ...allIds])]);
               } else {
-                const pageIds = filteredProducts
-                  .slice((currentPage - 1) * pageSize, currentPage * pageSize)
-                  .map((row) => row._id);
+                // Deselect all filtered products
+                const allIds = filteredProducts.map((row) => row._id || row.id);
                 setSelectedRows((prev) =>
-                  prev.filter((id) => !pageIds.includes(id))
+                  prev.filter((id) => !allIds.includes(id)),
                 );
               }
             }}
-            isAllSelected={
-              selectedRows.length > 0 &&
-              selectedRows.length ===
-                Math.min(
-                  pageSize,
-                  filteredProducts.length - (currentPage - 1) * pageSize
-                )
-            }
-            enableRowSelection={false}
             emptyState={
               <div className='flex flex-col items-center justify-center py-12'>
                 <Package className='h-12 w-12 text-muted-foreground mb-4' />
