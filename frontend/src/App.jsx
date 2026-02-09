@@ -187,14 +187,10 @@ function App() {
               <Route path='new' element={<AddProduct />} />
               <Route path=':productId' element={<VendorProductDetailsPage />} />
             </Route>
-            <Route
-              path={ROUTES.DASHBOARD.VENDOR_ORDERS.split('/').pop()}
-              element={<VendorOrders />}
-            />
-            <Route
-              path={ROUTES.DASHBOARD.VENDOR_ORDER_DETAILS.split('/').pop()}
-              element={<ViewOrder />}
-            />
+            <Route path={ROUTES.DASHBOARD.VENDOR_ORDERS.split('/').pop()}>
+              <Route index element={<VendorOrders />} />
+              <Route path=':orderId' element={<ViewOrder />} />
+            </Route>
             <Route
               path={ROUTES.DASHBOARD.VENDOR_ANALYTICS.split('/').pop()}
               element={<VendorAnalytics />}

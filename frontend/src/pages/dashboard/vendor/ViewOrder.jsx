@@ -315,7 +315,7 @@ const ViewOrder = () => {
                                 {label}
                               </div>
                             </SelectItem>
-                          )
+                          ),
                         )}
                       </SelectContent>
                     </Select>
@@ -380,7 +380,7 @@ const ViewOrder = () => {
                     <div className='text-sm text-gray-500 dark:text-gray-400 mt-2'>
                       Shipping:{' '}
                       {formData.shippingMethod.replace(/^\w/, (c) =>
-                        c.toUpperCase()
+                        c.toUpperCase(),
                       )}
                     </div>
                   )}
