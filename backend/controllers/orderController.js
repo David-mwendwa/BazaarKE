@@ -157,17 +157,26 @@ export const newOrder = async (req, res) => {
 
 // Get single order => GET /api/v1/orders/:id
 export const getSingleOrder = async (req, res) => {
-  const order = await Order.findById(req.params.id).populate(
-    'user',
-    'name email',
-  );
+  const order = await Order.findById(req.params.id)
+    .populate('user', 'name email')
+    .populate('items.product', 'name price vendor thumbnail images');
 
   if (!order) {
     throw new NotFoundError(`No order found with ID: ${req.params.id}`);
   }
 
-  // Check if user is authorized to view this oßder
-  if (order.user._id.toString() !== req.user.id && req.user.role !== 'admin') {
+  const userId = req.user.id || req.user._id?.toString();
+  const isOrderOwner = order.user?._id?.toString() === userId;
+  const isAdmin = req.user.role === 'admin';
+  const isVendor =
+    req.user.role === 'vendor' &&
+    order.items?.some((item) => {
+      const vendorId =
+        item.vendor?.toString?.() || item.product?.vendor?.toString?.();
+      return vendorId === userId;
+    });
+
+  if (!isOrderOwner && !isAdmin && !isVendor) {
     throw new UnauthenticatedError('Not authorized to access this order');
   }
 

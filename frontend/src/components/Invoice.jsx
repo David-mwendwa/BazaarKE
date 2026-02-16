@@ -1,5 +1,15 @@
 import React, { forwardRef, useImperativeHandle } from 'react';
 import { format } from 'date-fns';
+import { formatCurrency } from '../lib/utils';
+
+// Helper to get numeric amount from price (handles both { amount, currency } and plain number)
+const getAmount = (value) => {
+  if (value == null) return 0;
+  const amount = typeof value === 'object' ? value?.amount ?? value : value;
+  // Convert from cents if amount > 1000 and no decimals
+  const num = Number(amount) || 0;
+  return num > 1000 && num % 100 === 0 ? num / 100 : num;
+};
 
 const Invoice = forwardRef(({ order, statusConfig }, ref) => {
   // Expose the component's DOM node via the ref
@@ -12,9 +22,10 @@ const Invoice = forwardRef(({ order, statusConfig }, ref) => {
   if (!order) return null;
   const statusInfo = statusConfig[order.status] || statusConfig.processing;
   const currentDate = format(new Date(), 'MMMM d, yyyy');
-  const orderDate = order.date
-    ? format(new Date(order.date), 'MMMM d, yyyy')
-    : currentDate;
+  const orderDate =
+    order.createdAt || order.date
+      ? format(new Date(order.createdAt || order.date), 'MMMM d, yyyy')
+      : currentDate;
 
   return (
     <div
@@ -24,7 +35,9 @@ const Invoice = forwardRef(({ order, statusConfig }, ref) => {
       <div className='flex justify-between items-start mb-8'>
         <div>
           <h1 className='text-2xl font-bold'>INVOICE</h1>
-          <p className='text-gray-600'>Order #{order.id}</p>
+          <p className='text-gray-600'>
+            Order #{order.orderNumber || order.id || order._id}
+          </p>
         </div>
         <div className='text-right'>
           <p className='text-lg font-semibold'>Your Store Name</p>
@@ -38,16 +51,29 @@ const Invoice = forwardRef(({ order, statusConfig }, ref) => {
       <div className='grid grid-cols-2 gap-8 mb-8'>
         <div>
           <h2 className='text-lg font-semibold mb-2'>Bill To:</h2>
-          <p className='font-medium'>{order.customer}</p>
-          <p className='text-gray-700'>{order.email}</p>
-          <p className='text-gray-700'>{order.phone}</p>
+          <p className='font-medium'>
+            {order.user?.name || order.customer?.name || order.customer || 'N/A'}
+          </p>
+          <p className='text-gray-700'>
+            {order.user?.email || order.customer?.email || order.email || 'N/A'}
+          </p>
+          <p className='text-gray-700'>
+            {order.shippingAddress?.phone || order.customer?.phone || order.phone || 'N/A'}
+          </p>
           <div className='mt-2'>
-            <p className='text-gray-700'>{order.shippingAddress?.street}</p>
             <p className='text-gray-700'>
-              {order.shippingAddress?.city}, {order.shippingAddress?.state}{' '}
-              {order.shippingAddress?.zip}
+              {order.shippingAddress?.address1 ||
+                order.shippingAddress?.street}
             </p>
-            <p className='text-gray-700'>{order.shippingAddress?.country}</p>
+            <p className='text-gray-700'>
+              {order.shippingAddress?.city},{' '}
+              {order.shippingAddress?.state}{' '}
+              {order.shippingAddress?.postalCode ||
+                order.shippingAddress?.zip}
+            </p>
+            <p className='text-gray-700'>
+              {order.shippingAddress?.country}
+            </p>
           </div>
         </div>
         <div className='text-right'>
@@ -92,31 +118,35 @@ const Invoice = forwardRef(({ order, statusConfig }, ref) => {
               </tr>
             </thead>
             <tbody className='bg-white divide-y divide-gray-200'>
-              {order.items?.map((item) => (
-                <tr key={item.id}>
-                  <td className='px-6 py-4 whitespace-nowrap'>
-                    <div className='flex items-center'>
-                      <div className='ml-4'>
-                        <div className='text-sm font-medium text-gray-900'>
-                          {item.name}
-                        </div>
-                        <div className='text-sm text-gray-500'>
-                          SKU: {item.sku || 'N/A'}
+              {order.items?.map((item, idx) => {
+                const priceAmount = getAmount(item.price);
+                const itemTotal = priceAmount * (item.quantity || 1);
+                return (
+                  <tr key={item._id || item.id || idx}>
+                    <td className='px-6 py-4 whitespace-nowrap'>
+                      <div className='flex items-center'>
+                        <div className='ml-4'>
+                          <div className='text-sm font-medium text-gray-900'>
+                            {item.name || item.product?.name || 'Product'}
+                          </div>
+                          <div className='text-sm text-gray-500'>
+                            SKU: {item.sku || 'N/A'}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className='px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500'>
-                    ${item.price.toFixed(2)}
-                  </td>
-                  <td className='px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500'>
-                    {item.quantity}
-                  </td>
-                  <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium'>
-                    ${(item.price * item.quantity).toFixed(2)}
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className='px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500'>
+                      {formatCurrency(priceAmount)}
+                    </td>
+                    <td className='px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500'>
+                      {item.quantity}
+                    </td>
+                    <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium'>
+                      {formatCurrency(itemTotal)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -127,20 +157,24 @@ const Invoice = forwardRef(({ order, statusConfig }, ref) => {
         <div className='w-64'>
           <div className='flex justify-between py-2'>
             <span className='text-gray-600'>Subtotal:</span>
-            <span>${order.subtotal?.toFixed(2) || '0.00'}</span>
+            <span>{formatCurrency(getAmount(order.subtotal))}</span>
           </div>
           <div className='flex justify-between py-2'>
             <span className='text-gray-600'>Shipping:</span>
-            <span>${order.shippingCost?.toFixed(2) || '0.00'}</span>
+            <span>
+              {formatCurrency(
+                getAmount(order.shipping ?? order.shippingCost)
+              )}
+            </span>
           </div>
           <div className='flex justify-between py-2'>
             <span className='text-gray-600'>Tax:</span>
-            <span>${order.tax?.toFixed(2) || '0.00'}</span>
+            <span>{formatCurrency(getAmount(order.tax))}</span>
           </div>
           <div className='border-t border-gray-200 my-2'></div>
           <div className='flex justify-between py-2 text-lg font-bold'>
             <span>Total:</span>
-            <span>${order.total?.toFixed(2) || '0.00'}</span>
+            <span>{formatCurrency(getAmount(order.total))}</span>
           </div>
         </div>
       </div>

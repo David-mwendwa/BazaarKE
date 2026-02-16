@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useReactToPrint } from 'react-to-print';
+import { toast } from 'react-toastify';
+import { useOrder } from '../../../contexts/OrderContext';
+import { formatCurrency } from '../../../lib/utils';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { Textarea } from '../../../components/ui/Textarea';
@@ -24,6 +27,12 @@ const Icon = ({ name, ...props }) => {
 
 // Status configuration (same as in Orders.jsx)
 const statusConfig = {
+  pending: {
+    icon: <Icon name='CLOCK' className='h-4 w-4' />,
+    bg: 'bg-yellow-100 dark:bg-yellow-900/30',
+    text: 'text-yellow-800 dark:text-yellow-400',
+    label: 'Pending',
+  },
   processing: {
     icon: <Icon name='CLOCK' className='h-4 w-4' />,
     bg: 'bg-blue-100 dark:bg-blue-900/30',
@@ -42,6 +51,12 @@ const statusConfig = {
     text: 'text-green-800 dark:text-green-400',
     label: 'Delivered',
   },
+  refunded: {
+    icon: <Icon name='PACKAGE_X' className='h-4 w-4' />,
+    bg: 'bg-gray-100 dark:bg-gray-900/30',
+    text: 'text-gray-800 dark:text-gray-400',
+    label: 'Refunded',
+  },
   cancelled: {
     icon: <Icon name='X' className='h-4 w-4' />,
     bg: 'bg-red-100 dark:bg-red-900/30',
@@ -50,46 +65,10 @@ const statusConfig = {
   },
 };
 
-// Mock data - in a real app, this would come from an API
-const mockOrder = {
-  id: 'ORD-1001',
-  customer: 'John Doe',
-  email: 'john.doe@example.com',
-  phone: '+1 (555) 123-4567',
-  date: '2023-06-15',
-  status: 'processing',
-  subtotal: 299.98,
-  shipping: 0,
-  tax: 24.0,
-  total: 323.98,
-  paymentMethod: 'Credit Card (Visa ending in 4242)',
-  paymentStatus: 'Paid',
-  shippingAddress: {
-    name: 'John Doe',
-    street: '123 Main St',
-    city: 'New York',
-    state: 'NY',
-    zip: '10001',
-    country: 'United States',
-  },
-  billingAddress: 'Same as shipping address',
-  items: [
-    {
-      id: 1,
-      name: 'Wireless Headphones',
-      quantity: 1,
-      price: 99.99,
-      total: 99.99,
-    },
-    { id: 2, name: 'Phone Stand', quantity: 2, price: 99.99, total: 199.98 },
-  ],
-  notes: 'Please leave the package at the front door.',
-};
-
 const ViewOrder = () => {
   const { orderId } = useParams();
-  const location = useLocation();
   const navigate = useNavigate();
+  const { getOrderById } = useOrder();
   const [order, setOrder] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -132,28 +111,30 @@ const ViewOrder = () => {
   });
 
   useEffect(() => {
-    // In a real app, fetch order details from API
     const fetchOrder = async () => {
+      if (!orderId) return;
       try {
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        setOrder(mockOrder);
+        const response = await getOrderById(orderId);
+        const orderData = response?.data ?? response;
+        setOrder(orderData);
         setFormData({
-          status: mockOrder.status,
-          trackingNumber: mockOrder.trackingNumber || '',
-          shippingMethod: mockOrder.shippingMethod || 'standard',
-          customerNotes: mockOrder.notes || '',
-          adminNotes: mockOrder.adminNotes || '',
+          status: orderData.status || '',
+          trackingNumber: orderData.shipping?.trackingNumber || '',
+          shippingMethod: orderData.shipping?.method || 'standard',
+          customerNotes: orderData.notes?.[0]?.content || orderData.notes?.[0]?.text || '',
+          adminNotes: orderData.adminNotes || '',
         });
       } catch (error) {
         console.error('Error fetching order:', error);
+        toast.error(error.response?.data?.message || 'Failed to load order');
+        setOrder(null);
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchOrder();
-  }, [orderId]);
+  }, [orderId, getOrderById]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -221,7 +202,7 @@ const ViewOrder = () => {
         </p>
         <Button
           className='mt-4'
-          onClick={() => navigate(ROUTES.DASHBOARD.SELLER + '/orders')}>
+          onClick={() => navigate(ROUTES.DASHBOARD.VENDOR_ORDERS)}>
           Back to Orders
         </Button>
       </div>
@@ -248,9 +229,14 @@ const ViewOrder = () => {
       <form onSubmit={handleSubmit} className='space-y-6'>
         <div className='flex items-center justify-between'>
           <div>
-            <h2 className='text-2xl font-bold'>Order #{order.id}</h2>
+            <h2 className='text-2xl font-bold'>
+              Order #{order.orderNumber || order._id}
+            </h2>
             <p className='text-sm text-gray-500 dark:text-gray-400'>
-              Placed on {new Date(order.date).toLocaleDateString()}
+              Placed on{' '}
+              {new Date(
+                order.createdAt || order.date || Date.now()
+              ).toLocaleDateString()}
             </p>
           </div>
           <div className='flex items-center space-x-4'>
@@ -277,7 +263,7 @@ const ViewOrder = () => {
               </div>
             )}
             <Button asChild variant='ghost'>
-              <Link to={ROUTES.DASHBOARD.SELLER + '/orders'}>
+              <Link to={ROUTES.DASHBOARD.VENDOR_ORDERS}>
                 Back to Orders
               </Link>
             </Button>
@@ -391,12 +377,19 @@ const ViewOrder = () => {
             <div className='bg-white dark:bg-gray-800 rounded-lg shadow p-6'>
               <h3 className='font-medium mb-4'>Customer</h3>
               <div className='space-y-2'>
-                <p className='font-medium'>{order.customer}</p>
-                <p className='text-sm text-gray-600 dark:text-gray-300'>
-                  {order.email}
+                <p className='font-medium'>
+                  {order.user?.name ||
+                    order.customer?.name ||
+                    order.user?.email ||
+                    'N/A'}
                 </p>
                 <p className='text-sm text-gray-600 dark:text-gray-300'>
-                  {order.phone}
+                  {order.user?.email || order.customer?.email || 'N/A'}
+                </p>
+                <p className='text-sm text-gray-600 dark:text-gray-300'>
+                  {order.shippingAddress?.phone ||
+                    order.customer?.phone ||
+                    'N/A'}
                 </p>
                 {isEditing && (
                   <div className='mt-4'>
@@ -418,13 +411,37 @@ const ViewOrder = () => {
             <div className='bg-white dark:bg-gray-800 rounded-lg shadow p-6'>
               <h3 className='font-medium mb-4'>Shipping Address</h3>
               <address className='not-italic text-sm text-gray-600 dark:text-gray-300 space-y-1'>
-                <p>{order.shippingAddress.name}</p>
-                <p>{order.shippingAddress.street}</p>
+                {(order.shippingAddress?.firstName ||
+                  order.shippingAddress?.lastName ||
+                  order.shippingAddress?.name) && (
+                  <p>
+                    {[
+                      order.shippingAddress?.firstName,
+                      order.shippingAddress?.lastName,
+                    ]
+                      .filter(Boolean)
+                      .join(' ') ||
+                      order.shippingAddress?.name}
+                  </p>
+                )}
+                {(order.shippingAddress?.address1 ||
+                  order.shippingAddress?.street) && (
+                  <p>
+                    {order.shippingAddress?.address1 ||
+                      order.shippingAddress?.street}
+                    {order.shippingAddress?.address2 && `, ${order.shippingAddress.address2}`}
+                  </p>
+                )}
                 <p>
-                  {order.shippingAddress.city}, {order.shippingAddress.state}{' '}
-                  {order.shippingAddress.zip}
+                  {order.shippingAddress?.city}
+                  {order.shippingAddress?.state && `, ${order.shippingAddress.state}`}
+                  {order.shippingAddress?.postalCode &&
+                    ` ${order.shippingAddress.postalCode}`}
                 </p>
-                <p>{order.shippingAddress.country}</p>
+                <p>{order.shippingAddress?.country || 'Kenya'}</p>
+                {order.shippingAddress?.phone && (
+                  <p>{order.shippingAddress.phone}</p>
+                )}
               </address>
               {isEditing && (
                 <div className='mt-4'>
@@ -445,12 +462,12 @@ const ViewOrder = () => {
             <div className='bg-white dark:bg-gray-800 rounded-lg shadow p-6'>
               <h3 className='font-medium mb-4'>Payment</h3>
               <div className='space-y-2'>
-                <p className='text-sm text-gray-600 dark:text-gray-300'>
-                  {order.paymentMethod}
+                <p className='text-sm text-gray-600 dark:text-gray-300 capitalize'>
+                  {order.payment?.method || order.paymentMethod || 'N/A'}
                 </p>
                 <div className='flex items-center'>
-                  <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'>
-                    {order.paymentStatus}
+                  <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 capitalize'>
+                    {order.payment?.status || order.paymentStatus || order.isPaid ? 'Paid' : 'Pending'}
                   </span>
                 </div>
                 {isEditing && (
@@ -487,55 +504,127 @@ const ViewOrder = () => {
                 <h3 className='font-medium'>Order Items</h3>
               </div>
               <div className='divide-y divide-gray-200 dark:divide-gray-700'>
-                {order.items.map((item) => (
-                  <div key={item.id} className='p-6 flex justify-between'>
-                    <div className='flex'>
-                      <div className='h-20 w-20 flex-shrink-0 overflow-hidden rounded-md border border-gray-200 dark:border-gray-700'>
-                        <div className='h-full w-full flex items-center justify-center bg-gray-100 dark:bg-gray-700'>
-                          <Icon
-                            name='IMAGE'
-                            className='h-8 w-8 text-gray-400'
-                          />
+                {(order.items || []).map((item, idx) => {
+                  const priceAmount =
+                    item.price?.amount ?? item.price ?? 0;
+                  const itemTotal =
+                    (typeof priceAmount === 'number' ? priceAmount : 0) *
+                    (item.quantity || 1);
+                  return (
+                    <div
+                      key={item._id || item.product?._id || idx}
+                      className='p-6 flex justify-between'>
+                      <div className='flex'>
+                        <div className='relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-md border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-700'>
+                          {(() => {
+                            const thumbUrl =
+                              item.thumbnail ||
+                              item.product?.thumbnail ||
+                              (typeof item.product?.images?.[0] === 'string'
+                                ? item.product.images[0]
+                                : item.product?.images?.[0]?.url);
+                            return thumbUrl ? (
+                              <img
+                                src={thumbUrl}
+                                alt={item.name || item.product?.name || 'Product'}
+                                className='absolute inset-0 h-full w-full object-cover'
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.style.display = 'none';
+                                }}
+                              />
+                            ) : null;
+                          })()}
+                          <div className='flex h-full w-full items-center justify-center'>
+                            <Icon
+                              name='PACKAGE'
+                              className='h-8 w-8 text-gray-400'
+                            />
+                          </div>
+                        </div>
+                        <div className='ml-4'>
+                          <h4 className='font-medium'>
+                            {item.name || item.product?.name || 'Product'}
+                          </h4>
+                          <p className='mt-1 text-sm text-gray-500 dark:text-gray-400'>
+                            Qty: {item.quantity}
+                          </p>
                         </div>
                       </div>
-                      <div className='ml-4'>
-                        <h4 className='font-medium'>{item.name}</h4>
-                        <p className='mt-1 text-sm text-gray-500 dark:text-gray-400'>
-                          Qty: {item.quantity}
-                        </p>
-                      </div>
+                      <p className='font-medium'>
+                        {formatCurrency(
+                          itemTotal > 1000 && itemTotal % 100 === 0
+                            ? itemTotal / 100
+                            : itemTotal
+                        )}
+                      </p>
                     </div>
-                    <p className='font-medium'>${item.total.toFixed(2)}</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               <div className='border-t border-gray-200 dark:border-gray-700 px-6 py-4 space-y-4'>
                 <div className='flex justify-between text-sm'>
                   <span>Subtotal</span>
-                  <span>${order.subtotal.toFixed(2)}</span>
+                  <span>
+                    {formatCurrency(
+                      (order.subtotal?.amount ?? order.subtotal ?? 0) > 1000 &&
+                        (order.subtotal?.amount ?? order.subtotal ?? 0) % 100 === 0
+                        ? (order.subtotal?.amount ?? order.subtotal ?? 0) / 100
+                        : order.subtotal?.amount ?? order.subtotal ?? 0
+                    )}
+                  </span>
                 </div>
                 <div className='flex justify-between text-sm'>
                   <span>Shipping</span>
-                  <span>${order.shipping.toFixed(2)}</span>
+                  <span>
+                    {formatCurrency(
+                      (order.shipping?.amount ?? order.shipping ?? 0) > 1000 &&
+                        (order.shipping?.amount ?? order.shipping ?? 0) % 100 === 0
+                        ? (order.shipping?.amount ?? order.shipping ?? 0) / 100
+                        : order.shipping?.amount ?? order.shipping ?? 0
+                    )}
+                  </span>
                 </div>
                 <div className='flex justify-between text-sm'>
                   <span>Tax</span>
-                  <span>${order.tax.toFixed(2)}</span>
+                  <span>
+                    {formatCurrency(
+                      (order.tax?.amount ?? order.tax ?? 0) > 1000 &&
+                        (order.tax?.amount ?? order.tax ?? 0) % 100 === 0
+                        ? (order.tax?.amount ?? order.tax ?? 0) / 100
+                        : order.tax?.amount ?? order.tax ?? 0
+                    )}
+                  </span>
                 </div>
                 <div className='flex justify-between font-medium border-t border-gray-200 dark:border-gray-700 pt-4 mt-2'>
                   <span>Total</span>
-                  <span>${order.total.toFixed(2)}</span>
+                  <span>
+                    {formatCurrency(
+                      (order.total?.amount ?? order.total ?? 0) > 1000 &&
+                        (order.total?.amount ?? order.total ?? 0) % 100 === 0
+                        ? (order.total?.amount ?? order.total ?? 0) / 100
+                        : order.total?.amount ?? order.total ?? 0
+                    )}
+                  </span>
                 </div>
               </div>
             </div>
 
-            {order.notes && (
-              <div className='bg-white dark:bg-gray-800 rounded-lg shadow p-6'>
-                <h3 className='font-medium mb-2'>Order Notes</h3>
-                <p className='text-sm text-gray-600 dark:text-gray-300'>
-                  {order.notes}
-                </p>
-              </div>
+            {(order.notes?.length > 0 ||
+              (typeof order.notes === 'string' && order.notes)) && (
+            <div className='bg-white dark:bg-gray-800 rounded-lg shadow p-6'>
+              <h3 className='font-medium mb-2'>Order Notes</h3>
+              <p className='text-sm text-gray-600 dark:text-gray-300'>
+                {Array.isArray(order.notes)
+                  ? order.notes
+                      .map((n) => n?.content ?? n?.text ?? (typeof n === 'string' ? n : ''))
+                      .filter(Boolean)
+                      .join('; ')
+                  : typeof order.notes === 'string'
+                    ? order.notes
+                    : ''}
+              </p>
+            </div>
             )}
           </div>
         </div>
