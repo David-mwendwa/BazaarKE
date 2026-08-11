@@ -48,7 +48,6 @@ import {
   Filter,
   MoreHorizontal,
   Eye,
-  FileText,
   Mail,
   RefreshCw,
   Search,
@@ -711,14 +710,6 @@ const Orders = () => {
                   className='cursor-pointer'>
                   <Eye className='mr-2 h-4 w-4' />
                   View Details
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className='cursor-pointer'
-                  onClick={(e) => {
-                    e.stopPropagation();
-                  }}>
-                  <FileText className='mr-2 h-4 w-4' />
-                  View Invoice
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem

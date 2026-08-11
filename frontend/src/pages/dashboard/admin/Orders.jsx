@@ -910,7 +910,6 @@ const Orders = () => {
               setPagination((prev) => ({ ...prev, pageSize, pageIndex: 0 }))
             }
             totalItems={filteredOrders.length}
-            enableRowSelection={false}
             selectedRows={selectedRows}
             onSelectRow={(row, selected) => {
               if (selected) {

@@ -600,13 +600,8 @@ const Header = () => {
                 <button
                   onClick={toggleTheme}
                   className='p-2 rounded-full text-gray-600 hover:text-primary-600 dark:text-gray-300 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors relative group'
-                  aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-                  title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-                  aria-label={
-                    theme === 'dark'
-                      ? 'Switch to light mode'
-                      : 'Switch to dark mode'
-                  }>
+                  aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                  title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}>
                   <div className='relative h-5 w-5 flex items-center justify-center'>
                     <motion.div
                       key={theme === 'dark' ? 'sun' : 'moon'}
