@@ -1,0 +1,25 @@
+{
+  "name": "bazaarke",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BazaarKE - a multi-vendor marketplace for Kenya",
+  "author": {
+    "name": "David Mwendwa",
+    "email": "davidmw022@gmail.com",
+    "url": "https://github.com/David-mwendwa"
+  },
+  "license": "MIT",
+  "repository": "github:David-mwendwa/BazaarKE",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "npx concurrently --kill-others-on-fail --names \"FRONTEND,BACKEND\" \"npm run dev --prefix frontend\" \"npm run dev --prefix backend\"",
+    "build": "npm run build --prefix frontend",
+    "server": "npm run dev --prefix backend",
+    "install:all": "npm install --prefix frontend && npm install --prefix backend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  }
+}

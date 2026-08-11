@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" role="img" aria-label="BazaarKE">
+  <!--
+    The stall mark from components/common/BrandLogo.jsx, reworked for 16px.
+    What was Vite's default purple bolt until now — the scaffold favicon was
+    never replaced, so every tab said someone else's brand.
+
+    A tab icon has no surrounding wordmark to lean on, so this one carries a
+    teal ground and thicker white framing than the in-app mark: the hairline
+    strokes that read fine at 22px disappear at 16. Colours are hardcoded
+    because a favicon has no stylesheet — teal-700 / amber-500 / white,
+    matching the palette in tailwind.config.js.
+  -->
+  <rect width="32" height="32" rx="7" fill="#0f766e"/>
+  <path d="M5 7H27V13Q23.33 17.5 19.67 13Q16 17.5 12.33 13Q8.67 17.5 5 13Z" fill="#f59e0b"/>
+  <path d="M9 16V25M23 16V25M6.5 25H25.5" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>
+</svg>

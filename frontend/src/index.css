@@ -1,0 +1,142 @@
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Neutral shadcn tokens ported from MarketHub's dashboard (background,
+   border, muted, card, etc. — used by the ported Radix-based ui components).
+   primary/secondary are intentionally NOT driven from vars here — those stay
+   BazaarKE's teal/amber, defined directly in tailwind.config.js. */
+@layer base {
+  html {
+    font-family: 'Open Sans', system-ui, sans-serif;
+    scrollbar-gutter: stable;
+  }
+
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    /* gray-300 / gray-600 — matches the borders the hand-written inputs and
+       the storefront use, so a text field and a ported Textarea don't sit side
+       by side with visibly different edges. */
+    --input: 217 12% 84%;
+    /* teal-500 — the rest of the app focuses with `ring-primary-500`, and
+       shadcn's own near-black default made every ported component (Textarea,
+       Select, the Radix menus) flash a different colour on focus. */
+    --ring: 173 80% 40%;
+
+    /* ── Corner radius: the single knob for the whole app ──────────────────
+       Every `rounded-*` utility is derived from this in tailwind.config.js,
+       so changing this one value restyles every button, input, card, dropdown
+       and image frame at once.
+         0.5rem  — current: softly rounded
+         0       — square corners everywhere
+         0.75rem — noticeably rounder
+       Circular things (`rounded-full`: avatars, status dots, badge pills, the
+       toggle switch) are intentionally exempt and stay circular. */
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 215 14% 34%;
+    --ring: 172 66% 50%; /* teal-400 — lighter, to carry on the dark ground */
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
+  }
+}
+
+/* Radix overlays (dropdown menus, selects, dialogs) lock scrolling through
+   react-remove-scroll, which also tries to compensate for the scrollbar it
+   assumes it just removed: it measures `innerWidth - documentElement.clientWidth`
+   and pins that much `margin-right` on the body.
+
+   That compensation is wrong here. `html` above sets `scrollbar-gutter: stable`,
+   so the gutter is permanently reserved and the measurement reads 15px even
+   though nothing is being removed — and the lock sets `overflow: hidden` on
+   `body`, which doesn't take the document scrollbar away anyway. The result was
+   the whole page jumping sideways the moment a row's "…" menu opened.
+
+   Zeroing it keeps the scroll lock (that part is JS event blocking) and drops
+   only the bogus shift. `html body[...]` outranks the library's own
+   `body[...] { … !important }` on specificity, which matters because its style
+   tag is injected at runtime and lands after this stylesheet. */
+html body[data-scroll-locked] {
+  margin-right: 0 !important;
+}
+
+/* The confirm/prompt dialog. The panel itself is styled with Tailwind on the
+   element; these are the parts Tailwind can't reach — ::backdrop is a
+   pseudo-element on the top layer, and an entry animation needs keyframes. */
+.confirm-dialog::backdrop {
+  background-color: rgb(2 6 23 / 0.55);
+  backdrop-filter: blur(2px);
+}
+
+.confirm-dialog[open] {
+  animation: dialog-in 0.16s ease-out;
+}
+
+.confirm-dialog[open]::backdrop {
+  animation: dialog-backdrop-in 0.16s ease-out;
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+}
+
+@keyframes dialog-backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confirm-dialog[open],
+  .confirm-dialog[open]::backdrop {
+    animation: none;
+  }
+}
+
+/* Remove input number arrows */
+input[type='number'] {
+  -moz-appearance: textfield;
+}
+
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

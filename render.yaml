@@ -1,0 +1,109 @@
+# Render blueprint for the BazaarKE API. The React frontend is deployed
+# separately on Netlify (see netlify.toml).
+#
+# Every `sync: false` var must be filled in from the Render dashboard on first
+# deploy — they are secrets or environment-specific URLs and are deliberately
+# not stored in the repo. backend/.env.example documents what each one is.
+services:
+  - type: web
+    name: bazaarke-api
+    runtime: node
+    plan: free
+    # Closest Render region to Kenya.
+    region: frankfurt
+    rootDir: backend
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Render injects PORT itself; server.js reads it.
+
+      # --- Database ---
+      - key: MONGO_URI
+        sync: false
+      - key: MONGO_PASSWORD
+        sync: false
+
+      # --- Auth ---
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRE
+        value: 30d
+      - key: COOKIE_LIFETIME
+        value: "30"
+
+      # --- URLs (CORS allowlist + absolute upload URLs) ---
+      # Set PROD_FRONTEND_URL to the Netlify site URL, no trailing slash.
+      - key: PROD_FRONTEND_URL
+        sync: false
+      - key: PROD_API_URL
+        sync: false
+
+      # --- Image storage ---
+      # Render's disk is ephemeral: without Cloudinary, uploaded product and
+      # avatar images vanish on every redeploy.
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+      # --- Mail ---
+      - key: MAIL_MODE
+        value: auto
+      - key: MAIL_SANDBOX_DOMAINS
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_EMAIL
+        sync: false
+      - key: SMTP_FROM_EMAIL
+        sync: false
+      - key: SMTP_FROM_NAME
+        value: BazaarKE
+      - key: MAILTRAP_HOST
+        sync: false
+      - key: MAILTRAP_PORT
+        sync: false
+      - key: MAILTRAP_USER
+        sync: false
+      - key: MAILTRAP_PASSWORD
+        sync: false
+
+      # --- Payments (all optional; checkout disables what isn't configured) ---
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_PUBLISHABLE_KEY
+        sync: false
+      - key: STRIPE_API_VERSION
+        value: "2022-11-15"
+      - key: MPESA_CONSUMER_KEY
+        sync: false
+      - key: MPESA_CONSUMER_SECRET
+        sync: false
+      - key: MPESA_SHORTCODE
+        sync: false
+      - key: MPESA_PASSKEY
+        sync: false
+      - key: MPESA_AUTH_URL
+        sync: false
+      - key: MPESA_STK_PUSH_URL
+        sync: false
+      - key: MPESA_CALLBACK_URL
+        sync: false
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_SECRET
+        sync: false
+      - key: PAYPAL_API_URL
+        sync: false

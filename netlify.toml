@@ -1,0 +1,38 @@
+# Netlify deploys the frontend only. The Express API lives on Render — see
+# render.yaml. Set VITE_API_BASE_URL in the Netlify UI (Site configuration →
+# Environment variables) to the Render service URL plus /api/v1; without it the
+# build falls back to the hardcoded default in src/api/apiClient.js.
+
+[build]
+  base = "frontend"
+  command = "npm ci && npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Client-side routing: every unmatched path is served by the SPA shell. Must
+# stay last so real files (and /assets/*) win first.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
+# Vite fingerprints everything under /assets, so it can be cached forever.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-store, must-revalidate"
