@@ -52,10 +52,11 @@ const WishlistButton = ({ product, variant = 'icon', className = '' }) => {
       aria-label={label}
       aria-pressed={saved}
       title={label}
-      className={`flex h-8 w-8 items-center justify-center rounded-full border border-dark-200 bg-white/90 backdrop-blur transition-colors disabled:opacity-60 ${
+      className={`flex h-6 w-6 items-center justify-center rounded-full border border-dark-200 bg-white/90 backdrop-blur transition-colors disabled:opacity-60 sm:h-8 sm:w-8 ${
         saved ? 'text-red-500 hover:text-red-600' : 'text-dark-400 hover:text-red-500'
       } ${className}`}>
-      <FiHeart size={16} fill={saved ? 'currentColor' : 'none'} />
+      <FiHeart size={12} className='sm:hidden' fill={saved ? 'currentColor' : 'none'} />
+      <FiHeart size={16} className='hidden sm:block' fill={saved ? 'currentColor' : 'none'} />
     </button>
   );
 };

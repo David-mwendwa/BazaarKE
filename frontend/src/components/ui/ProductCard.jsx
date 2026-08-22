@@ -55,35 +55,36 @@ const ProductCard = ({ product }) => {
     !outOfStock && typeof product.stock?.qty === 'number' && product.stock.qty <= 3;
 
   return (
-    <div className='group relative flex h-full flex-col rounded-lg border border-dark-200 bg-white p-3 transition-shadow hover:shadow-card-hover'>
+    <div className='group relative flex h-full flex-col rounded-lg border border-dark-200 bg-white p-2 transition-shadow hover:shadow-card-hover sm:p-3'>
       {/* Outside the Link, so saving doesn't navigate. Always visible on
           touch, where there is no hover to reveal it. */}
-      <WishlistButton product={product} className='absolute right-2 top-2 z-10' />
+      <WishlistButton product={product} className='absolute right-1 top-1 z-10 sm:right-2 sm:top-2' />
 
       <Link to={`/product/${product._id}`} className='relative block'>
         {/* Plain text, not a filled badge — the flag sits over the image's
             white space and a solid chip there would fight the packaging. */}
         {discount > 0 && (
-          <span className='absolute left-0 top-0 z-10 text-xs font-medium text-secondary-600'>
+          <span className='absolute left-0 top-0 z-10 text-[10px] font-medium text-secondary-600 sm:text-xs'>
             {discount}% off
           </span>
         )}
 
         {/* Fixed height, not an aspect ratio: every card's image box is then
             the same height whatever the card's width or the photo's shape, so
-            the names below start on one line across the row. `object-contain`
-            letterboxes a wide product inside it rather than cropping it. */}
-        <div className='flex h-44 items-center justify-center overflow-hidden'>
+            the names below start on one line across the row. Smaller on
+            mobile so a two-up grid doesn't turn each card into a full screen;
+            `object-contain` letterboxes a wide product rather than cropping it. */}
+        <div className='flex h-24 items-center justify-center overflow-hidden sm:h-36 md:h-44'>
           <img
             src={product.thumbnail}
             alt={product.name}
             loading='lazy'
-            className='max-h-full max-w-full object-contain p-2'
+            className='max-h-full max-w-full object-contain p-1 sm:p-2'
           />
         </div>
 
         {outOfStock && (
-          <span className='absolute bottom-2 left-0 rounded-full bg-dark-800 px-2.5 py-1 text-xs font-semibold text-white'>
+          <span className='absolute bottom-1.5 left-0 rounded-full bg-dark-800 px-2 py-0.5 text-[10px] font-semibold text-white sm:bottom-2 sm:px-2.5 sm:py-1 sm:text-xs'>
             Out of stock
           </span>
         )}
@@ -92,27 +93,29 @@ const ProductCard = ({ product }) => {
       <Link
         to={`/product/${product._id}`}
         title={product.name}
-        className='mt-1 line-clamp-2 min-h-[2.75rem] text-[15px] leading-snug text-dark-800 hover:text-primary-700'>
+        className='mt-1 line-clamp-2 min-h-[2rem] text-xs leading-snug text-dark-800 hover:text-primary-700 sm:min-h-[2.75rem] sm:text-[15px]'>
         {product.name}
       </Link>
 
       {/* Reserved whether or not the product has a rating, so the price line
           below starts on the same baseline across a row. Unrated products say
           so rather than showing five empty stars, which reads as zero out of
-          five rather than "no one has said yet". */}
-      <div className='mt-1.5 min-h-[1.125rem]'>
+          five rather than "no one has said yet". The wrapper carries its own
+          text size so it doesn't inherit the page's larger line-height as an
+          invisible strut around the smaller child text. */}
+      <div className='mt-1 min-h-[1rem] text-[10px] sm:mt-1.5 sm:min-h-[1.125rem] sm:text-xs'>
         {rating?.count > 0 ? (
           <StarRating value={rating.average} count={rating.count} size='sm' />
         ) : (
-          <span className='text-xs text-dark-400'>No reviews yet</span>
+          <span className='text-dark-400'>No reviews yet</span>
         )}
       </div>
 
       <div className='mt-1'>
-        <div className='flex flex-wrap items-baseline gap-x-2'>
-          <span className='font-heading text-base font-bold text-primary-800'>{formatKsh(price)}</span>
+        <div className='flex flex-wrap items-baseline gap-x-1.5 sm:gap-x-2'>
+          <span className='font-heading text-sm font-bold text-primary-800 sm:text-base'>{formatKsh(price)}</span>
           {onSale && (
-            <span className='text-sm text-red-500 line-through'>{formatKsh(product.price)}</span>
+            <span className='text-[11px] text-red-500 line-through sm:text-sm'>{formatKsh(product.price)}</span>
           )}
         </div>
         {/* The saving spelled out in shillings under the price: the percentage
@@ -121,7 +124,7 @@ const ProductCard = ({ product }) => {
         {/* The saving, or — when stock is nearly gone — the scarcity, which is
             the more useful thing to know at that point. Both are facts from
             the record, not urgency copy: the count is the real one. */}
-        <p className='mt-0.5 min-h-[1.125rem] text-xs text-dark-500'>
+        <p className='mt-0.5 min-h-[1rem] text-[10px] text-dark-500 sm:min-h-[1.125rem] sm:text-xs'>
           {lowStock ? (
             <span className='font-medium text-secondary-700'>
               Only {product.stock.qty} left
@@ -134,12 +137,12 @@ const ProductCard = ({ product }) => {
         </p>
       </div>
 
-      <div className='mt-auto pt-2.5'>
+      <div className='mt-auto pt-2 sm:pt-2.5'>
         {outOfStock ? (
           <button
             type='button'
             disabled
-            className='w-full cursor-not-allowed rounded-md bg-dark-100 py-2.5 text-sm font-semibold text-dark-400'>
+            className='w-full cursor-not-allowed rounded-md bg-dark-100 py-1.5 text-[11px] font-semibold text-dark-400 sm:py-2.5 sm:text-sm'>
             Out of stock
           </button>
         ) : inCart ? (
@@ -149,25 +152,28 @@ const ProductCard = ({ product }) => {
             <button
               type='button'
               onClick={() => setQty(product._id, inCart.qty - 1)}
-              className='rounded-l-md px-4 py-2 text-dark-600 hover:text-primary-700'
+              className='rounded-l-md px-2.5 py-1.5 text-dark-600 hover:text-primary-700 sm:px-4 sm:py-2'
               aria-label={`Remove one ${product.name}`}>
-              <FiMinus size={16} />
+              <FiMinus size={12} className='sm:hidden' />
+              <FiMinus size={16} className='hidden sm:block' />
             </button>
-            <span className='text-sm font-semibold tabular-nums text-dark-800'>{inCart.qty}</span>
+            <span className='text-[11px] font-semibold tabular-nums text-dark-800 sm:text-sm'>{inCart.qty}</span>
             <button
               type='button'
               onClick={() => setQty(product._id, inCart.qty + 1)}
-              className='rounded-r-md px-4 py-2 text-dark-600 hover:text-primary-700'
+              className='rounded-r-md px-2.5 py-1.5 text-dark-600 hover:text-primary-700 sm:px-4 sm:py-2'
               aria-label={`Add another ${product.name}`}>
-              <FiPlus size={16} />
+              <FiPlus size={12} className='sm:hidden' />
+              <FiPlus size={16} className='hidden sm:block' />
             </button>
           </div>
         ) : (
           <button
             type='button'
             onClick={() => addItem(product, 1)}
-            className='flex w-full items-center justify-center gap-2 rounded-md bg-primary-600 py-2.5 text-sm font-semibold uppercase tracking-wide text-white transition-colors hover:bg-primary-700'>
-            <FiShoppingBag size={15} />
+            className='flex w-full items-center justify-center gap-1.5 rounded-md bg-primary-600 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-white transition-colors hover:bg-primary-700 sm:gap-2 sm:py-2.5 sm:text-sm'>
+            <FiShoppingBag size={12} className='sm:hidden' />
+            <FiShoppingBag size={15} className='hidden sm:block' />
             Add to cart
           </button>
         )}

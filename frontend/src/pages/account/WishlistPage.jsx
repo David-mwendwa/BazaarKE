@@ -28,7 +28,7 @@ const WishlistPage = () => {
     return (
       <div className='pb-16'>
         <div className='mb-6 h-8 w-48 animate-pulse rounded-md bg-dark-100' />
-        <div className='grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4'>
+        <div className='grid grid-cols-2 gap-2.5 sm:gap-5 md:grid-cols-3 lg:grid-cols-4'>
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className='h-80 animate-pulse rounded-lg bg-dark-100' />
           ))}
@@ -85,7 +85,7 @@ const WishlistPage = () => {
         )}
       </div>
 
-      <div className='grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4'>
+      <div className='grid grid-cols-2 gap-2.5 sm:gap-5 md:grid-cols-3 lg:grid-cols-4'>
         {items.map((product) => (
           <ProductCard key={product._id} product={product} />
         ))}

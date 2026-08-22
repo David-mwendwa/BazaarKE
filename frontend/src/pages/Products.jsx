@@ -36,12 +36,13 @@ const Select = ({ value, onChange, options, className = '' }) => (
 );
 
 const SkeletonCard = () => (
-  <div className='bg-white rounded-lg border border-dark-200 overflow-hidden animate-pulse'>
-    <div className='aspect-square bg-dark-100' />
-    <div className='p-4 space-y-2'>
-      <div className='h-3 bg-dark-100 rounded-md w-1/2' />
-      <div className='h-4 bg-dark-100 rounded-md w-3/4' />
-      <div className='h-4 bg-dark-100 rounded-md w-1/3' />
+  <div className='flex h-full animate-pulse flex-col rounded-lg border border-dark-200 bg-white p-2 sm:p-3'>
+    <div className='h-24 rounded-md bg-dark-100 sm:h-36 md:h-44' />
+    <div className='mt-2 h-3 w-5/6 rounded-md bg-dark-100 sm:mt-3 sm:h-3.5' />
+    <div className='mt-1.5 h-3 w-2/3 rounded-md bg-dark-100 sm:h-3.5' />
+    <div className='mt-2 h-3.5 w-1/2 rounded-md bg-dark-100 sm:mt-3 sm:h-4' />
+    <div className='mt-auto pt-2 sm:pt-4'>
+      <div className='h-8 rounded-md bg-dark-100 sm:h-10' />
     </div>
   </div>
 );
@@ -250,7 +251,7 @@ const Products = () => {
         )}
 
         {loading ? (
-          <div className='grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5'>
+          <div className='grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-4 sm:gap-5'>
             {Array.from({ length: 12 }).map((_, i) => (
               <SkeletonCard key={i} />
             ))}
@@ -285,7 +286,7 @@ const Products = () => {
             )}
           </div>
         ) : (
-          <div className='grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5'>
+          <div className='grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-4 sm:gap-5'>
             {products.map((product) => (
               <ProductCard key={product._id} product={product} />
             ))}

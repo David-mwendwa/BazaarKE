@@ -14,7 +14,7 @@ import { FiStar } from 'react-icons/fi';
  * which is the same family of "reason to buy" signal.
  */
 
-const SIZES = { sm: 12, md: 15, lg: 18 };
+const SIZES = { xs: 10, sm: 12, md: 15, lg: 18 };
 
 export const StarRating = ({ value = 0, count, size = 'md', className = '' }) => {
   const px = SIZES[size] || SIZES.md;
@@ -45,7 +45,7 @@ export const StarRating = ({ value = 0, count, size = 'md', className = '' }) =>
         </span>
       </span>
       {typeof count === 'number' && (
-        <span className='text-xs tabular-nums text-dark-500'>({count})</span>
+        <span className='text-[9px] tabular-nums text-dark-500 sm:text-xs'>({count})</span>
       )}
     </span>
   );

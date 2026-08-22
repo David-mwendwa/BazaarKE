@@ -44,13 +44,13 @@ const CATEGORY_ICONS = {
  * the section to one line and then shoved the page down.
  */
 const SkeletonCard = () => (
-  <div className='flex h-full animate-pulse flex-col rounded-lg border border-dark-200 bg-white p-3'>
-    <div className='h-44 rounded-md bg-dark-100' />
-    <div className='mt-3 h-3.5 w-5/6 rounded-md bg-dark-100' />
-    <div className='mt-1.5 h-3.5 w-2/3 rounded-md bg-dark-100' />
-    <div className='mt-3 h-4 w-1/2 rounded-md bg-dark-100' />
-    <div className='mt-auto pt-4'>
-      <div className='h-10 rounded-md bg-dark-100' />
+  <div className='flex h-full animate-pulse flex-col rounded-lg border border-dark-200 bg-white p-2 sm:p-3'>
+    <div className='h-24 rounded-md bg-dark-100 sm:h-36 md:h-44' />
+    <div className='mt-2 h-3 w-5/6 rounded-md bg-dark-100 sm:mt-3 sm:h-3.5' />
+    <div className='mt-1.5 h-3 w-2/3 rounded-md bg-dark-100 sm:h-3.5' />
+    <div className='mt-2 h-3.5 w-1/2 rounded-md bg-dark-100 sm:mt-3 sm:h-4' />
+    <div className='mt-auto pt-2 sm:pt-4'>
+      <div className='h-8 rounded-md bg-dark-100 sm:h-10' />
     </div>
   </div>
 );
@@ -58,13 +58,13 @@ const SkeletonCard = () => (
 const ProductRail = ({ title, viewAllHref, products, loading, skeletonCount = 4 }) => (
   <section>
     <div className='mb-4 flex items-center justify-between'>
-      <h2 className='font-heading text-xl font-bold text-dark-900'>{title}</h2>
+      <h2 className='font-heading text-base font-bold text-dark-900 sm:text-xl'>{title}</h2>
       <Link to={viewAllHref} className='text-sm font-semibold text-primary-700 hover:underline'>
         See all
       </Link>
     </div>
     {loading ? (
-      <div className='grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4'>
+      <div className='grid grid-cols-2 gap-2.5 sm:gap-5 md:grid-cols-3 lg:grid-cols-4'>
         {Array.from({ length: skeletonCount }).map((_, i) => (
           <SkeletonCard key={i} />
         ))}
@@ -72,7 +72,7 @@ const ProductRail = ({ title, viewAllHref, products, loading, skeletonCount = 4 
     ) : products.length === 0 ? (
       <p className='text-sm text-dark-500'>Nothing here right now — check back soon.</p>
     ) : (
-      <div className='grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4'>
+      <div className='grid grid-cols-2 gap-2.5 sm:gap-5 md:grid-cols-3 lg:grid-cols-4'>
         {products.map((product) => (
           <ProductCard key={product._id} product={product} />
         ))}
@@ -96,8 +96,14 @@ const CategoryRow = () => {
 
   return (
     <section>
-      <h2 className='mb-4 font-heading text-xl font-bold text-dark-900'>Shop by category</h2>
-      <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5'>
+      <h2 className='mb-3 font-heading text-base font-bold text-dark-900 sm:mb-4 sm:text-xl'>
+        Shop by category
+      </h2>
+      {/* One full-width row per category on mobile — a 2-column grid wraps an
+          odd count (5 categories) into a ragged last row, and a lone tile
+          reads like a mistake rather than a browse list. `sm:` and up have
+          the width for the tile grid the shop's other shelves already use. */}
+      <div className='flex flex-col divide-y divide-dark-100 overflow-hidden rounded-lg border border-dark-200 bg-white sm:grid sm:grid-cols-3 sm:gap-3 sm:divide-y-0 sm:overflow-visible sm:rounded-none sm:border-none sm:bg-transparent lg:grid-cols-5'>
         {categories.map((cat) => {
           const Icon = CATEGORY_ICONS[cat.slug] || Laptop;
 
@@ -105,12 +111,12 @@ const CategoryRow = () => {
             <Link
               key={cat.slug}
               to={`/products?category=${cat.slug}`}
-              className='flex flex-col items-center gap-2.5 rounded-lg border border-dark-200 bg-white px-3 py-5 text-center transition-colors hover:border-primary-500 hover:bg-primary-50'>
+              className='flex items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-primary-50 sm:flex-col sm:gap-2.5 sm:rounded-lg sm:border sm:border-dark-200 sm:px-3 sm:py-5 sm:text-center sm:hover:border-primary-500'>
               {/* The category's photograph when an admin has set one, the icon
                   when they haven't. The artwork is optional in the real sense:
-                  both fill the same 44px circle, so a shop that has uploaded
-                  three images out of six doesn't get a ragged row. */}
-              <span className='flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-primary-50 text-primary-700'>
+                  both fill the same circle, so a shop that has uploaded three
+                  images out of six doesn't get a ragged row. */}
+              <span className='flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-50 text-primary-700 sm:h-11 sm:w-11'>
                 {cat.thumbnail ? (
                   <img
                     src={cat.thumbnail}
@@ -119,7 +125,7 @@ const CategoryRow = () => {
                     className='h-full w-full object-cover'
                   />
                 ) : (
-                  <Icon className='h-5 w-5' />
+                  <Icon className='h-4 w-4 sm:h-5 sm:w-5' />
                 )}
               </span>
               <span className='text-sm font-semibold text-dark-800'>{cat.label}</span>
